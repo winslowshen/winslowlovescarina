@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fff4f7">
+  <title>Winslow & Carina · Pixel Memo</title>
+  <style>
+    :root {
+      --ink: #3f3342;
+      --muted: #817383;
+      --paper: #fffdf8;
+      --cream: #fff7df;
+      --pink: #ff88aa;
+      --pink-dark: #d85880;
+      --pink-soft: #ffe0e9;
+      --purple: #8d75c7;
+      --purple-soft: #eee7ff;
+      --mint: #79c8ad;
+      --mint-soft: #e1f7ee;
+      --yellow: #f6c95c;
+      --blue: #82b8e8;
+      --border: #4a3d4d;
+      --shadow: #d7b9c2;
+      --pixel: 4px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Courier New", "PingFang SC", "Microsoft YaHei", monospace;
+      background:
+        linear-gradient(rgba(255,255,255,.72), rgba(255,255,255,.72)),
+        repeating-linear-gradient(0deg, transparent 0 23px, #f4cfdb 24px 25px),
+        repeating-linear-gradient(90deg, transparent 0 23px, #f4cfdb 24px 25px),
+        #fff4f7;
+      min-height: 100vh;
+      image-rendering: pixelated;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
+
+    .page-shell {
+      width: min(1160px, calc(100% - 28px));
+      margin: 28px auto 48px;
+    }
+
+    .pixel-border {
+      border: var(--pixel) solid var(--border);
+      box-shadow: 8px 8px 0 var(--shadow);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 28px 30px 24px;
+      background: var(--paper);
+      min-height: 235px;
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 160px;
+      height: 160px;
+      background: var(--pink-soft);
+      transform: rotate(45deg);
+      opacity: .65;
+    }
+
+    .hero::before { right: -92px; top: -74px; }
+    .hero::after { left: -110px; bottom: -110px; background: var(--purple-soft); }
+
+    .topline {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    .brand-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      background: var(--ink);
+      color: white;
+      font-size: 13px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      box-shadow: 4px 4px 0 var(--pink);
+    }
+
+    .tiny-heart {
+      position: relative;
+      width: 12px;
+      height: 12px;
+      background: var(--pink);
+      transform: rotate(45deg);
+      display: inline-block;
+    }
+
+    .tiny-heart::before,
+    .tiny-heart::after {
+      content: "";
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--pink);
+    }
+    .tiny-heart::before { left: -6px; }
+    .tiny-heart::after { top: -6px; }
+
+    .date-badge {
+      border: 3px solid var(--border);
+      background: var(--cream);
+      padding: 8px 10px;
+      font-weight: 700;
+      font-size: 12px;
+      box-shadow: 3px 3px 0 var(--yellow);
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      margin-top: 27px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 26px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      max-width: 740px;
+      font-size: clamp(28px, 4.7vw, 55px);
+      line-height: 1.05;
+      letter-spacing: -.06em;
+    }
+
+    .hero h1 .pink { color: var(--pink-dark); }
+
+    .hero p {
+      margin: 15px 0 0;
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.7;
+    }
+
+    .always {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--purple);
+      font-size: 13px;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .pixel-portrait {
+      width: 132px;
+      height: 112px;
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .person {
+      position: absolute;
+      bottom: 0;
+      width: 56px;
+      height: 74px;
+    }
+    .person.one { left: 7px; }
+    .person.two { right: 7px; }
+    .person .head {
+      position: absolute;
+      top: 0;
+      left: 9px;
+      width: 38px;
+      height: 38px;
+      border: 4px solid var(--border);
+      background: #ffd9c5;
+      box-shadow: inset 0 8px 0 #4a3546;
+    }
+    .person.two .head { box-shadow: inset 0 11px 0 #754d43; }
+    .person .head::before,
+    .person .head::after {
+      content: "";
+      position: absolute;
+      top: 19px;
+      width: 4px;
+      height: 4px;
+      background: var(--border);
+    }
+    .person .head::before { left: 7px; }
+    .person .head::after { right: 7px; }
+    .person .body {
+      position: absolute;
+      bottom: 0;
+      width: 56px;
+      height: 39px;
+      border: 4px solid var(--border);
+      background: var(--blue);
+    }
+    .person.two .body { background: var(--pink); }
+    .big-heart {
+      position: absolute;
+      top: 3px;
+      left: 58px;
+      width: 16px;
+      height: 16px;
+      transform: rotate(45deg);
+      background: var(--pink-dark);
+      animation: bob 1.8s steps(2, end) infinite;
+    }
+    .big-heart::before, .big-heart::after {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--pink-dark);
+    }
+    .big-heart::before { left: -8px; }
+    .big-heart::after { top: -8px; }
+    @keyframes bob { 50% { transform: translateY(-6px) rotate(45deg); } }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 22px 0;
+    }
+
+    .stat {
+      padding: 16px 18px;
+      border: 3px solid var(--border);
+      background: var(--paper);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 4px 4px 0 #e5cfd6;
+    }
+    .stat:nth-child(2) { background: var(--mint-soft); box-shadow: 4px 4px 0 var(--mint); }
+    .stat:nth-child(3) { background: var(--purple-soft); box-shadow: 4px 4px 0 #bba9ea; }
+    .stat-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .stat strong { font-size: 27px; }
+
+    .tabs {
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+      margin: 26px 0 18px;
+    }
+    .tab {
+      border: 3px solid var(--border);
+      background: var(--paper);
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 #ddc8cf;
+      transition: transform .1s, box-shadow .1s;
+    }
+    .tab:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 #ddc8cf; }
+    .tab.active { background: var(--ink); color: white; box-shadow: 4px 4px 0 var(--pink); }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(300px, .85fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .stack { display: grid; gap: 18px; }
+
+    .memo-card {
+      background: var(--paper);
+      border: 4px solid var(--border);
+      box-shadow: 7px 7px 0 #d8c3ca;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 17px;
+      border-bottom: 4px solid var(--border);
+      background: var(--pink-soft);
+    }
+    .memo-card[data-color="mint"] .card-head { background: var(--mint-soft); }
+    .memo-card[data-color="purple"] .card-head { background: var(--purple-soft); }
+    .memo-card[data-color="cream"] .card-head { background: var(--cream); }
+
+    .card-title { display: flex; align-items: center; gap: 10px; }
+    .card-title h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+    .pixel-icon {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      background: var(--paper);
+      border: 3px solid var(--border);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .count-chip {
+      min-width: 28px;
+      padding: 4px 7px;
+      text-align: center;
+      border: 2px solid var(--border);
+      background: var(--paper);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .task-list { list-style: none; margin: 0; padding: 7px 17px 13px; }
+    .task-item {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 2px dashed #dccbd1;
+    }
+    .task-item:last-child { border-bottom: 0; }
+    .task-item.hidden { display: none; }
+
+    .check {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      border: 3px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      position: relative;
+    }
+    .check:checked { background: var(--mint); }
+    .check:checked::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 4px;
+      left: 3px;
+      top: 3px;
+      border-left: 3px solid var(--ink);
+      border-bottom: 3px solid var(--ink);
+      transform: rotate(-45deg);
+    }
+    .task-text { line-height: 1.45; font-size: 14px; font-weight: 700; }
+    .task-item.done .task-text { color: #998e9a; text-decoration: line-through 2px; }
+    .tag {
+      padding: 4px 6px;
+      border: 2px solid var(--border);
+      background: var(--cream);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .delete-btn {
+      border: 0;
+      background: transparent;
+      color: #aa94a0;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 3px;
+      line-height: 1;
+    }
+    .delete-btn:hover { color: var(--pink-dark); }
+
+    .add-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 9px;
+      padding: 0 17px 17px;
+    }
+    .pixel-input,
+    .pixel-textarea,
+    .pixel-select {
+      width: 100%;
+      border: 3px solid var(--border);
+      background: white;
+      color: var(--ink);
+      padding: 10px 11px;
+      outline: none;
+    }
+    .pixel-input:focus,
+    .pixel-textarea:focus,
+    .pixel-select:focus { box-shadow: 0 0 0 3px var(--pink-soft); }
+    .pixel-btn {
+      border: 3px solid var(--border);
+      background: var(--ink);
+      color: white;
+      padding: 9px 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--pink);
+    }
+    .pixel-btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--pink); }
+    .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--pink); }
+
+    .board {
+      position: sticky;
+      top: 18px;
+    }
+    .message-form {
+      padding: 16px;
+      display: grid;
+      gap: 9px;
+      border-bottom: 4px solid var(--border);
+      background: #fffaf0;
+    }
+    .form-mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .pixel-textarea { min-height: 76px; resize: vertical; line-height: 1.5; }
+
+    .messages {
+      padding: 15px;
+      display: grid;
+      gap: 12px;
+      max-height: 610px;
+      overflow: auto;
+    }
+    .message {
+      position: relative;
+      padding: 13px 14px 12px;
+      border: 3px solid var(--border);
+      background: var(--purple-soft);
+      box-shadow: 3px 3px 0 #cfbee8;
+      animation: pop .18s steps(2, end);
+    }
+    .message:nth-child(2n) { background: var(--pink-soft); box-shadow-color: #edb6c7; }
+    .message:nth-child(3n) { background: var(--mint-soft); box-shadow-color: #b4ddcf; }
+    @keyframes pop { from { transform: scale(.96); opacity: .5; } }
+    .message-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .message p { margin: 0; white-space: pre-wrap; line-height: 1.55; font-size: 13px; font-weight: 700; }
+    .message .delete-message {
+      position: absolute;
+      right: 7px;
+      bottom: 5px;
+      opacity: 0;
+    }
+    .message:hover .delete-message { opacity: 1; }
+
+    .empty-state {
+      display: none;
+      padding: 25px 17px 30px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .empty-state.show { display: block; }
+
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.8;
+    }
+    .footer .heart-char { color: var(--pink-dark); }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translate(-50%, 18px);
+      z-index: 30;
+      background: var(--ink);
+      color: white;
+      border: 3px solid var(--border);
+      box-shadow: 4px 4px 0 var(--pink);
+      padding: 10px 15px;
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: .2s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 850px) {
+      .content-grid { grid-template-columns: 1fr; }
+      .board { position: static; }
+      .hero-copy { grid-template-columns: 1fr; }
+      .pixel-portrait { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .page-shell { width: min(100% - 18px, 1160px); margin-top: 12px; }
+      .hero { padding: 20px 18px; }
+      .topline { align-items: center; }
+      .date-badge { display: none; }
+      .stats { grid-template-columns: 1fr; gap: 9px; }
+      .stat { padding: 11px 14px; }
+      .stat strong { font-size: 22px; }
+      .tabs { gap: 7px; }
+      .tab { flex: 1; padding: 9px 7px; font-size: 12px; }
+      .form-mini-grid { grid-template-columns: 1fr; }
+      .task-item { grid-template-columns: 24px minmax(0, 1fr) auto; }
+      .tag { display: none; }
+      .add-row { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    /* Calm edition: a quieter, more consistent pixel system */
+    :root {
+      --ink: #393239;
+      --muted: #857a82;
+      --paper: #fffdfd;
+      --cream: #fff7e9;
+      --pink: #ee89a5;
+      --pink-dark: #c95f7d;
+      --pink-soft: #fde8ee;
+      --purple: #8d7aa5;
+      --purple-soft: #f5f0f8;
+      --mint: #8dc9b5;
+      --mint-soft: #edf8f4;
+      --yellow: #e8c66e;
+      --blue: #91b7d1;
+      --border: #4a4148;
+      --shadow: #eadbe0;
+      --pixel: 2px;
+    }
+
+    body {
+      background-color: #fff8fa;
+      background-image:
+        linear-gradient(rgba(223, 190, 200, .16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(223, 190, 200, .16) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    .page-shell { width: min(1080px, calc(100% - 32px)); margin-top: 24px; }
+    .pixel-border { border-width: 2px; box-shadow: 4px 4px 0 var(--shadow); }
+
+    .hero {
+      min-height: 0;
+      padding: 26px 28px;
+      background: rgba(255, 253, 253, .97);
+    }
+    .hero::before, .hero::after { display: none; }
+    .brand-chip {
+      padding: 7px 10px;
+      background: var(--pink-soft);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      box-shadow: 2px 2px 0 #e8cad3;
+      font-size: 11px;
+    }
+    .tiny-heart, .tiny-heart::before, .tiny-heart::after { background: var(--pink-dark); }
+    .tiny-heart { width: 9px; height: 9px; }
+    .tiny-heart::before, .tiny-heart::after { width: 9px; height: 9px; }
+    .tiny-heart::before { left: -4px; }
+    .tiny-heart::after { top: -4px; }
+    .date-badge {
+      border-width: 1px;
+      background: transparent;
+      box-shadow: none;
+      padding: 6px 8px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .hero-copy { margin-top: 22px; align-items: center; }
+    .hero h1 { font-size: clamp(28px, 4.2vw, 46px); line-height: 1.08; letter-spacing: -.045em; }
+    .hero p { margin-top: 12px; font-size: 13px; font-weight: 600; }
+    .always { color: var(--pink-dark); font-size: 11px; }
+    .pixel-portrait { transform: scale(.82); transform-origin: right center; }
+
+    .stats { gap: 9px; margin: 16px 0; }
+    .stat,
+    .stat:nth-child(2),
+    .stat:nth-child(3) {
+      padding: 11px 14px;
+      border: 1px solid #cdbfc5;
+      background: rgba(255, 253, 253, .93);
+      box-shadow: 2px 2px 0 var(--shadow);
+    }
+    .stat-label { font-size: 10px; }
+    .stat strong { font-size: 21px; color: var(--pink-dark); }
+
+    .tabs { margin: 19px 0 14px; gap: 7px; }
+    .tab {
+      border-width: 1px;
+      padding: 8px 12px;
+      box-shadow: 2px 2px 0 var(--shadow);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .tab:hover { transform: none; box-shadow: 2px 2px 0 var(--shadow); color: var(--ink); }
+    .tab.active { background: var(--pink-soft); color: var(--ink); box-shadow: 2px 2px 0 #e5c2cc; }
+
+    .content-grid { grid-template-columns: minmax(0, 1.4fr) minmax(290px, .8fr); gap: 16px; }
+    .stack { gap: 13px; }
+    .memo-card { border-width: 2px; box-shadow: 4px 4px 0 var(--shadow); }
+    .card-head,
+    .memo-card[data-color="mint"] .card-head,
+    .memo-card[data-color="purple"] .card-head,
+    .memo-card[data-color="cream"] .card-head {
+      padding: 12px 14px;
+      border-bottom-width: 1px;
+      background: #fffafa;
+    }
+    .card-title { gap: 8px; }
+    .card-title h2 { font-size: 14px; }
+    .card-title small { color: var(--muted); font-size: 10px; }
+    .pixel-icon { width: 21px; height: 21px; border-width: 1px; color: var(--pink-dark); }
+    .count-chip { border-width: 1px; color: var(--muted); }
+
+    .task-list { padding: 5px 14px 9px; }
+    .task-item { padding: 10px 0; border-bottom: 1px dashed #ded3d7; }
+    .check { width: 18px; height: 18px; border-width: 2px; }
+    .check:checked { background: var(--pink-soft); }
+    .check:checked::after { border-color: var(--pink-dark); border-width: 0 0 2px 2px; }
+    .task-text { font-size: 13px; font-weight: 600; }
+    .tag { padding: 3px 5px; border-width: 1px; background: #fff9f0; color: var(--muted); font-size: 9px; }
+    .delete-btn { font-size: 16px; }
+
+    .add-row { padding: 0 14px 14px; gap: 7px; }
+    .pixel-input, .pixel-textarea, .pixel-select { border-width: 1px; padding: 9px 10px; font-size: 12px; }
+    .pixel-input:focus, .pixel-textarea:focus, .pixel-select:focus { box-shadow: 0 0 0 2px var(--pink-soft); }
+    .pixel-btn {
+      border-width: 1px;
+      background: var(--pink-soft);
+      color: var(--ink);
+      padding: 8px 11px;
+      box-shadow: 2px 2px 0 #dfbbc6;
+      font-size: 11px;
+    }
+    .pixel-btn:hover { transform: none; box-shadow: 2px 2px 0 #dfbbc6; background: #f9dbe4; }
+    .pixel-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #dfbbc6; }
+
+    .message-form { padding: 13px; gap: 7px; border-bottom-width: 1px; background: #fffdfd; }
+    .messages { padding: 12px; gap: 9px; }
+    .message,
+    .message:nth-child(2n),
+    .message:nth-child(3n) {
+      padding: 11px 12px;
+      border-width: 1px;
+      background: #fff8fa;
+      box-shadow: 2px 2px 0 #eddae0;
+    }
+    .message-meta { margin-bottom: 6px; font-size: 9px; }
+    .message p { font-size: 12px; font-weight: 600; }
+    .footer { margin-top: 24px; font-size: 10px; font-weight: 600; }
+    .toast { border-width: 1px; box-shadow: 2px 2px 0 var(--pink); }
+
+    @media (max-width: 850px) {
+      .content-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .page-shell { width: min(100% - 18px, 1080px); }
+      .hero { padding: 20px 17px; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+      .stat { display: block; text-align: center; padding: 9px 4px; }
+      .stat-label { display: block; margin-bottom: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="hero pixel-border">
+      <div class="topline">
+        <div class="brand-chip"><span class="tiny-heart"></span> Winslow × Carina</div>
+        <div class="date-badge" id="today">OUR LITTLE SPACE</div>
+      </div>
+      <div class="hero-copy">
+        <div>
+          <h1>Come home,<br><span class="pink">the kids miss you.</span></h1>
+          <p>哈咯，lovely Carina · hi pretty boy<br><span class="always">always in love</span></p>
+        </div>
+        <div class="pixel-portrait" aria-label="Winslow 和 Carina 的像素小人">
+          <div class="big-heart"></div>
+          <div class="person one"><div class="head"></div><div class="body"></div></div>
+          <div class="person two"><div class="head"></div><div class="body"></div></div>
+        </div>
+      </div>
+    </header>
+
+    <section class="stats" aria-label="备忘录统计">
+      <div class="stat"><span class="stat-label">TO DO<br>还没完成</span><strong id="todoCount">0</strong></div>
+      <div class="stat"><span class="stat-label">DONE<br>已经完成</span><strong id="doneCount">0</strong></div>
+      <div class="stat"><span class="stat-label">IN LOVE<br>相爱时间</span><strong>∞</strong></div>
+    </section>
+
+    <nav class="tabs" aria-label="事项筛选">
+      <button class="tab active" type="button" data-filter="all">全部 ALL</button>
+      <button class="tab" type="button" data-filter="todo">未完成 TO DO</button>
+      <button class="tab" type="button" data-filter="done">已完成 DONE</button>
+    </nav>
+
+    <div class="content-grid">
+      <section class="stack" id="lists" aria-label="备忘清单"></section>
+
+      <aside class="memo-card board" data-color="purple">
+        <div class="card-head">
+          <div class="card-title"><span class="pixel-icon">✦</span><h2>留言板 MESSAGE BOARD</h2></div>
+          <span class="count-chip" id="messageCount">0</span>
+        </div>
+        <form class="message-form" id="messageForm">
+          <div class="form-mini-grid">
+            <select class="pixel-select" id="messageAuthor" aria-label="留言人">
+              <option>Winslow</option>
+              <option>Carina</option>
+              <option>Us</option>
+            </select>
+            <input class="pixel-input" id="messageTitle" maxlength="24" placeholder="小标题（可不填）">
+          </div>
+          <textarea class="pixel-textarea" id="messageText" maxlength="240" placeholder="写点什么给对方吧…" required></textarea>
+          <button class="pixel-btn" type="submit">＋ 留在最上面</button>
+        </form>
+        <div class="messages" id="messages"></div>
+      </aside>
+    </div>
+
+    <footer class="footer">
+      Made for W + C with tiny pixels and a very big <span class="heart-char">♥</span><br>
+      所有勾选和新内容都会自动保存在这台设备的浏览器里。
+    </footer>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite">已保存</div>
+
+  <script>
+    const STORAGE_KEY = 'winslow-carina-pixel-memo-v1';
+
+    const seedData = {
+      lists: [
+        {
+          id: 'daily',
+          title: 'Daily Quests',
+          subtitle: '日常任务',
+          icon: '☆',
+          color: 'pink',
+          items: [
+            { id: 'd1', text: '提车 — 提醒老婆带钥匙', done: true, tag: 'DONE' },
+            { id: 'd2', text: '换灯（观察一下）', done: false, tag: 'WATCH' },
+            { id: 'd3', text: 'bwcj 冰淇淋', done: true, tag: 'YUM' },
+            { id: 'd4', text: '整理答辩', done: true, tag: 'DONE' },
+            { id: 'd5', text: '看一下锦尚公馆', done: false, tag: 'PLAN' }
+          ]
+        },
+        {
+          id: 'bucket',
+          title: 'Bucket List',
+          subtitle: '我们想一起做的事',
+          icon: '♥',
+          color: 'purple',
+          items: [
+            { id: 'b1', text: 'live with Carina', done: false, tag: 'ONGOING' }
+          ]
+        },
+        {
+          id: 'grocery',
+          title: 'Grocery List',
+          subtitle: '采购清单',
+          icon: '+',
+          color: 'mint',
+          items: [
+            { id: 'g1', text: '沐浴露', done: true, tag: 'BOUGHT' },
+            { id: 'g2', text: '牙膏', done: true, tag: 'BOUGHT' }
+          ]
+        },
+        {
+          id: 'remember',
+          title: 'Things to Remember',
+          subtitle: '不要忘记',
+          icon: '!',
+          color: 'cream',
+          items: []
+        }
+      ],
+      messages: [
+        { id: 'm6', author: 'Carina', title: 'memo rule', text: '好神经，把这当微信文档了。', time: '刚刚' },
+        { id: 'm5', author: 'Winslow', title: 'promise', text: '我们要加新的加在最上面就好。', time: 'earlier' },
+        { id: 'm4', author: 'Winslow', title: 'noted', text: '格式不是很整齐，下次不删了。', time: 'earlier' },
+        { id: 'm3', author: 'Carina', title: 'hey', text: '干嘛删掉前面的。', time: 'earlier' },
+        { id: 'm2', author: 'Carina', title: '', text: 'I love u ✨', time: 'always' },
+        { id: 'm1', author: 'Us', title: '', text: '哈咯\nlovely Carina\nhi pretty boy', time: 'first note' }
+      ]
+    };
+
+    let data = loadData();
+    let activeFilter = 'all';
+
+    function cloneSeed() {
+      return JSON.parse(JSON.stringify(seedData));
+    }
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : cloneSeed();
+      } catch (error) {
+        return cloneSeed();
+      }
+    }
+
+    function saveData(message = '已自动保存 ♥') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      showToast(message);
+    }
+
+    function uid(prefix) {
+      return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>'"]/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[char]));
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    function renderLists() {
+      const host = document.getElementById('lists');
+      host.innerHTML = data.lists.map(list => {
+        const visibleItems = list.items.filter(item =>
+          activeFilter === 'all' || (activeFilter === 'done' ? item.done : !item.done)
+        );
+        const itemsHTML = list.items.map(item => `
+          <li class="task-item ${item.done ? 'done' : ''} ${activeFilter !== 'all' && ((activeFilter === 'done') !== item.done) ? 'hidden' : ''}" data-item-id="${item.id}">
+            <input class="check" type="checkbox" ${item.done ? 'checked' : ''} aria-label="标记 ${escapeHTML(item.text)}">
+            <span class="task-text">${escapeHTML(item.text)}</span>
+            <span style="display:flex;align-items:center;gap:5px">
+              <span class="tag">${escapeHTML(item.done ? 'DONE' : item.tag || 'TODO')}</span>
+              <button class="delete-btn" type="button" aria-label="删除事项">×</button>
+            </span>
+          </li>
+        `).join('');
+
+        return `
+          <article class="memo-card" data-list-id="${list.id}" data-color="${list.color}">
+            <div class="card-head">
+              <div class="card-title">
+                <span class="pixel-icon">${list.icon}</span>
+                <div><h2>${escapeHTML(list.title)}</h2><small>${escapeHTML(list.subtitle)}</small></div>
+              </div>
+              <span class="count-chip">${visibleItems.length}</span>
+            </div>
+            <ul class="task-list">${itemsHTML}</ul>
+            <div class="empty-state ${visibleItems.length === 0 ? 'show' : ''}">${activeFilter === 'done' ? '这里还没有已完成事项 ✦' : activeFilter === 'todo' ? '这一栏已经全部完成啦 ♥' : '这里还是空的，写下第一件事吧。'}</div>
+            <form class="add-row add-task-form">
+              <input class="pixel-input" maxlength="80" placeholder="＋ 新增一件事…" required>
+              <button class="pixel-btn" type="submit">ADD</button>
+            </form>
+          </article>
+        `;
+      }).join('');
+
+      bindListEvents();
+      updateStats();
+    }
+
+    function bindListEvents() {
+      document.querySelectorAll('.memo-card[data-list-id]').forEach(card => {
+        const list = data.lists.find(entry => entry.id === card.dataset.listId);
+
+        card.querySelectorAll('.task-item').forEach(row => {
+          const item = list.items.find(entry => entry.id === row.dataset.itemId);
+          row.querySelector('.check').addEventListener('change', event => {
+            item.done = event.target.checked;
+            saveData(item.done ? 'Nice! 又完成一件 ✦' : '已放回待办清单');
+            renderLists();
+          });
+          row.querySelector('.delete-btn').addEventListener('click', () => {
+            list.items = list.items.filter(entry => entry.id !== item.id);
+            saveData('事项已移除');
+            renderLists();
+          });
+        });
+
+        card.querySelector('.add-task-form').addEventListener('submit', event => {
+          event.preventDefault();
+          const input = event.currentTarget.querySelector('input');
+          const text = input.value.trim();
+          if (!text) return;
+          list.items.unshift({ id: uid('t'), text, done: false, tag: 'NEW' });
+          saveData('新事项已放在最上面');
+          renderLists();
+        });
+      });
+    }
+
+    function renderMessages() {
+      const host = document.getElementById('messages');
+      host.innerHTML = data.messages.map(message => `
+        <article class="message" data-message-id="${message.id}">
+          <div class="message-meta">
+            <span>${escapeHTML(message.author)}${message.title ? ' · ' + escapeHTML(message.title) : ''}</span>
+            <span>${escapeHTML(message.time)}</span>
+          </div>
+          <p>${escapeHTML(message.text)}</p>
+          <button class="delete-btn delete-message" type="button" aria-label="删除留言">×</button>
+        </article>
+      `).join('');
+      document.getElementById('messageCount').textContent = data.messages.length;
+
+      host.querySelectorAll('.message').forEach(note => {
+        note.querySelector('.delete-message').addEventListener('click', () => {
+          data.messages = data.messages.filter(message => message.id !== note.dataset.messageId);
+          saveData('留言已移除');
+          renderMessages();
+        });
+      });
+    }
+
+    function updateStats() {
+      const allItems = data.lists.flatMap(list => list.items);
+      document.getElementById('todoCount').textContent = allItems.filter(item => !item.done).length;
+      document.getElementById('doneCount').textContent = allItems.filter(item => item.done).length;
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(item => item.classList.remove('active'));
+        tab.classList.add('active');
+        activeFilter = tab.dataset.filter;
+        renderLists();
+      });
+    });
+
+    document.getElementById('messageForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const author = document.getElementById('messageAuthor').value;
+      const titleInput = document.getElementById('messageTitle');
+      const textInput = document.getElementById('messageText');
+      const text = textInput.value.trim();
+      if (!text) return;
+      data.messages.unshift({
+        id: uid('m'),
+        author,
+        title: titleInput.value.trim(),
+        text,
+        time: 'just now'
+      });
+      titleInput.value = '';
+      textInput.value = '';
+      saveData('留言已置顶 ♥');
+      renderMessages();
+    });
+
+    const dateFormatter = new Intl.DateTimeFormat('en', { month: 'short', day: '2-digit', year: 'numeric' });
+    document.getElementById('today').textContent = dateFormatter.format(new Date()).toUpperCase();
+
+    renderLists();
+    renderMessages();
+  </script>
+</body>
+</html>
