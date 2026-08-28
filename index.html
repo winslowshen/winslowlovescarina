@@ -517,6 +517,8 @@
       .form-mini-grid { grid-template-columns: 1fr; }
       .task-item { grid-template-columns: 24px minmax(0, 1fr) auto; }
       .tag { display: none; }
+      .rating-label { display: none; }
+      .star-btn { font-size: 14px; padding: 0; }
       .add-row { grid-template-columns: 1fr; }
     }
 
@@ -635,6 +637,29 @@
     .check:checked::after { border-color: var(--pink-dark); border-width: 0 0 2px 2px; }
     .task-text { font-size: 13px; font-weight: 600; }
     .tag { padding: 3px 5px; border-width: 1px; background: #fff9f0; color: var(--muted); font-size: 9px; }
+    .task-actions { display: flex; align-items: center; gap: 6px; }
+    .rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      padding: 2px 4px;
+      border: 1px solid #e1ccd3;
+      background: #fff8fa;
+      white-space: nowrap;
+    }
+    .rating-label { margin-right: 2px; color: var(--muted); font-size: 9px; }
+    .star-btn {
+      border: 0;
+      background: transparent;
+      color: #d6c8cd;
+      padding: 0 1px;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .star-btn.filled { color: #e8a54b; }
+    .star-btn:hover,
+    .star-btn:focus-visible { color: #d98927; outline: none; transform: translateY(-1px); }
     .delete-btn { font-size: 16px; }
 
     .add-row { padding: 0 14px 14px; gap: 7px; }
@@ -871,16 +896,29 @@
         const visibleItems = list.items.filter(item =>
           activeFilter === 'all' || (activeFilter === 'done' ? item.done : !item.done)
         );
-        const itemsHTML = list.items.map(item => `
-          <li class="task-item ${item.done ? 'done' : ''} ${activeFilter !== 'all' && ((activeFilter === 'done') !== item.done) ? 'hidden' : ''}" data-item-id="${item.id}">
-            <input class="check" type="checkbox" ${item.done ? 'checked' : ''} aria-label="标记 ${escapeHTML(item.text)}">
-            <span class="task-text">${escapeHTML(item.text)}</span>
-            <span style="display:flex;align-items:center;gap:5px">
-              <span class="tag">${escapeHTML(item.done ? 'DONE' : item.tag || 'TODO')}</span>
-              <button class="delete-btn" type="button" aria-label="删除事项">×</button>
+        const itemsHTML = list.items.map(item => {
+          const rating = Number(item.rating) || 0;
+          const ratingHTML = list.id === 'restaurants' && item.done ? `
+            <span class="rating" role="group" aria-label="给 ${escapeHTML(item.text)} 评分">
+              <span class="rating-label">评分</span>
+              ${[1, 2, 3, 4, 5].map(star => `
+                <button class="star-btn ${star <= rating ? 'filled' : ''}" type="button" data-rating="${star}" aria-label="${star} 星" title="${star} 星">★</button>
+              `).join('')}
             </span>
-          </li>
-        `).join('');
+          ` : '';
+
+          return `
+            <li class="task-item ${item.done ? 'done' : ''} ${activeFilter !== 'all' && ((activeFilter === 'done') !== item.done) ? 'hidden' : ''}" data-item-id="${item.id}">
+              <input class="check" type="checkbox" ${item.done ? 'checked' : ''} aria-label="标记 ${escapeHTML(item.text)}">
+              <span class="task-text">${escapeHTML(item.text)}</span>
+              <span class="task-actions">
+                ${ratingHTML}
+                <span class="tag">${escapeHTML(item.done ? 'DONE' : item.tag || 'TODO')}</span>
+                <button class="delete-btn" type="button" aria-label="删除事项">×</button>
+              </span>
+            </li>
+          `;
+        }).join('');
 
         return `
           <article class="memo-card" data-list-id="${list.id}" data-color="${list.color}">
@@ -913,8 +951,21 @@
           const item = list.items.find(entry => entry.id === row.dataset.itemId);
           row.querySelector('.check').addEventListener('change', event => {
             item.done = event.target.checked;
-            saveData(item.done ? 'Nice! 又完成一件 ✦' : '已放回待办清单');
+            saveData(
+              list.id === 'restaurants' && item.done
+                ? '吃完啦，现在可以打分了 ★'
+                : item.done
+                  ? 'Nice! 又完成一件 ✦'
+                  : '已放回待办清单'
+            );
             renderLists();
+          });
+          row.querySelectorAll('.star-btn').forEach(button => {
+            button.addEventListener('click', () => {
+              item.rating = Number(button.dataset.rating);
+              saveData(`已记录 ${item.rating} 星评分 ★`);
+              renderLists();
+            });
           });
           row.querySelector('.delete-btn').addEventListener('click', () => {
             list.items = list.items.filter(entry => entry.id !== item.id);
