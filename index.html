@@ -783,6 +783,14 @@
           ]
         },
         {
+          id: 'restaurants',
+          title: 'Restaurant List',
+          subtitle: '我们想一起去吃的店',
+          icon: 'R',
+          color: 'pink',
+          items: []
+        },
+        {
           id: 'remember',
           title: 'Things to Remember',
           subtitle: '不要忘记',
@@ -811,7 +819,24 @@
     function loadData() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved) : cloneSeed();
+        if (!saved) return cloneSeed();
+
+        const storedData = JSON.parse(saved);
+        if (!Array.isArray(storedData.lists)) return cloneSeed();
+
+        seedData.lists.forEach((seedList, index) => {
+          const exists = storedData.lists.some(list => list.id === seedList.id);
+          if (!exists) {
+            storedData.lists.splice(index, 0, JSON.parse(JSON.stringify(seedList)));
+          }
+        });
+
+        if (!Array.isArray(storedData.messages)) {
+          storedData.messages = cloneSeed().messages;
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
+        return storedData;
       } catch (error) {
         return cloneSeed();
       }
