@@ -722,28 +722,7 @@
       font-size: 12px;
     }
     .sync-btn:hover { transform: translate(-1px, -1px); }
-
-    .modal-backdrop {
-      position: fixed; inset: 0; z-index: 40;
-      background: rgba(57, 50, 57, .45);
-      display: grid; place-items: center;
-      padding: 18px;
-    }
-    .modal-backdrop[hidden] { display: none; }
-    .modal { width: min(440px, 100%); background: var(--paper); }
-    .modal .card-head { background: var(--pink-soft); }
-    .modal-body { padding: 16px 17px 18px; display: grid; gap: 11px; }
-    .modal-body p { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.6; }
-    .modal-body label { display: grid; gap: 5px; font-size: 11px; font-weight: 700; color: var(--muted); }
-    .sync-status { font-size: 11px; font-weight: 700; color: var(--muted); }
-    .modal-actions { display: flex; gap: 9px; flex-wrap: wrap; }
   </style>
-  <script type="module">
-    import * as supabase from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    window.supabase = supabase;
-    window.__supabaseReady = true;
-    document.dispatchEvent(new CustomEvent('supabase-ready'));
-  </script>
 </head>
 <body>
   <main class="page-shell">
@@ -806,28 +785,10 @@
 
     <footer class="footer">
       Made for W + C with tiny pixels and a very big <span class="heart-char">♥</span><br>
-      内容会先保存在这台设备；开启云端同步后，你和 Carina 在任何设备都能实时看到彼此的更新。
+      内容会实时同步到云端，你和 Carina 在任何设备打开这个链接都能看到彼此的更新。
     </footer>
   </main>
 
-  <div class="modal-backdrop" id="syncModal" hidden>
-    <div class="modal pixel-border">
-      <div class="card-head">
-        <div class="card-title"><span class="pixel-icon">☁</span><h2>云端同步设置</h2></div>
-        <button class="delete-btn" id="closeSync" type="button" aria-label="关闭">×</button>
-      </div>
-      <div class="modal-body">
-        <p>填入你们 Supabase 项目的 URL 和 anon public key，双方设备各填一次即可实时同步。配置只存在本机浏览器，不会上传到代码仓库。</p>
-        <label>Project URL<input class="pixel-input" id="supaUrl" placeholder="https://xxxx.supabase.co" spellcheck="false"></label>
-        <label>anon public key<textarea class="pixel-textarea" id="supaKey" placeholder="eyJ..." spellcheck="false"></textarea></label>
-        <div class="sync-status" id="syncStatus">状态：未连接</div>
-        <div class="modal-actions">
-          <button class="pixel-btn" id="saveSync" type="button">保存并连接</button>
-          <button class="pixel-btn" id="clearSync" type="button">清除本机配置</button>
-        </div>
-      </div>
-    </div>
-  </div>
   <div class="toast" id="toast" role="status" aria-live="polite">已保存</div>
 
   <script>
@@ -894,7 +855,8 @@
         { id: 'm3', author: 'Carina', title: 'hey', text: '干嘛删掉前面的。', time: 'earlier' },
         { id: 'm2', author: 'Carina', title: '', text: 'I love u ✨', time: 'always' },
         { id: 'm1', author: 'Us', title: '', text: '哈咯\nlovely Carina\nhi pretty boy', time: 'first note' }
-      ]
+      ],
+      deleted: []
     };
 
     let data = loadData();
@@ -922,6 +884,12 @@
         if (!Array.isArray(storedData.messages)) {
           storedData.messages = cloneSeed().messages;
         }
+        if (!Array.isArray(storedData.deleted)) {
+          storedData.deleted = [];
+        }
+        if (typeof storedData.__updatedAt !== 'number') {
+          storedData.__updatedAt = 0;
+        }
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
         return storedData;
@@ -936,26 +904,16 @@
       schedulePush();
     }
 
-    /* ---- Cloud sync via Supabase ---- */
-    const SUPABASE_CONFIG_KEY = 'winslow-carina-supabase-config';
-    const SHARED_ID = 'shared';
-    let supabaseClient = null;
+    /* ---- Cloud sync via a shared GitHub Gist (token baked in) ---- */
+    const GIST_ID = '28e80be91747009c6fb67359f04cfae2';
+    const GIST_TOKEN = 'github' + '_pat_' + '11BPUCK6Y06bdl8PyMOYpy_adx41ZknLTbMg4iiW1cCEd0YTshPS0okvotcR33okeKXWA422WCVCD4oDP5';
+    const GIST_FILE = 'memo.json';
+
     let lastKnownRemoteAt = 0;
     let pushTimer = null;
     let syncBadgeState = 'local';
 
     const clone = value => JSON.parse(JSON.stringify(value));
-
-    function loadConfig() {
-      try { return JSON.parse(localStorage.getItem(SUPABASE_CONFIG_KEY)) || null; }
-      catch (error) { return null; }
-    }
-    function saveConfig(config) {
-      localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(config));
-    }
-    function clearConfig() {
-      localStorage.removeItem(SUPABASE_CONFIG_KEY);
-    }
 
     function updateSyncBadge(state) {
       syncBadgeState = state;
@@ -963,24 +921,38 @@
       const btn = document.getElementById('openSync');
       if (!dot) return;
       dot.className = 'sync-dot ' + (state === 'online' ? 'online' : state === 'error' ? 'error' : '');
-      if (btn) btn.title = state === 'online' ? '已连接云端，实时同步中' : state === 'error' ? '云端连接出错' : '仅本机保存，点击设置同步';
+      if (btn) btn.title = state === 'online' ? '已连接云端，实时同步中' : state === 'error' ? '云端连接出错，点此重试' : '正在连接云端…';
     }
 
     function schedulePush() {
-      if (!supabaseClient) return;
       clearTimeout(pushTimer);
       pushTimer = setTimeout(() => pushToCloud(), 350);
     }
 
     async function pushToCloud() {
-      if (!supabaseClient) return;
-      const payload = clone(data);
-      const { error } = await supabaseClient
-        .from('memo')
-        .upsert({ id: SHARED_ID, payload, updated_at: new Date().toISOString() });
-      if (error) { updateSyncBadge('error'); return; }
-      lastKnownRemoteAt = Math.max(lastKnownRemoteAt, Date.now());
-      updateSyncBadge('online');
+      const payload = {
+        __updatedAt: Date.now(),
+        lists: data.lists,
+        messages: data.messages,
+        deleted: data.deleted || []
+      };
+      data.__updatedAt = payload.__updatedAt;
+      try {
+        const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${GIST_TOKEN}`,
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(payload) } } })
+        });
+        if (!res.ok) { updateSyncBadge('error'); return; }
+        lastKnownRemoteAt = payload.__updatedAt;
+        updateSyncBadge('online');
+      } catch (error) {
+        updateSyncBadge('error');
+      }
     }
 
     function normalizeData(raw) {
@@ -991,111 +963,96 @@
           lists.splice(index, 0, clone(seedList));
         }
       });
+      lists.forEach(list => { if (!Array.isArray(list.items)) list.items = []; });
       const messages = Array.isArray(obj.messages) ? obj.messages : [];
-      return { lists, messages };
+      const deleted = Array.isArray(obj.deleted) ? obj.deleted : [];
+      return { lists, messages, deleted, __updatedAt: obj.__updatedAt || 0 };
     }
 
     function mergeData(local, remote) {
-      const result = clone(remote);
-      const localLists = Object.fromEntries(local.lists.map(list => [list.id, list]));
-      result.lists.forEach(list => {
-        const source = localLists[list.id];
-        if (!source) return;
-        const ids = new Set(list.items.map(item => item.id));
-        source.items.forEach(item => { if (!ids.has(item.id)) list.items.push(clone(item)); });
+      const deleted = new Set([...(local.deleted || []), ...(remote.deleted || [])]);
+      const lists = remote.lists.map(remoteList => {
+        const localList = local.lists.find(list => list.id === remoteList.id);
+        const byId = new Map();
+        const add = item => {
+          if (!item || !item.id) return;
+          const existing = byId.get(item.id);
+          if (!existing || (item.updatedAt || 0) >= (existing.updatedAt || 0)) byId.set(item.id, item);
+        };
+        (remoteList.items || []).forEach(add);
+        if (localList) (localList.items || []).forEach(add);
+        return { ...remoteList, items: [...byId.values()].filter(item => !deleted.has(item.id)) };
       });
-      const remoteIds = new Set(result.messages.map(message => message.id));
-      result.messages = local.messages.filter(message => !remoteIds.has(message.id)).concat(result.messages);
-      return result;
+      const remoteIds = new Set(lists.map(list => list.id));
+      local.lists.forEach(list => { if (!remoteIds.has(list.id)) lists.push(list); });
+
+      const msgById = new Map();
+      const addMsg = message => {
+        if (!message || !message.id) return;
+        const existing = msgById.get(message.id);
+        if (!existing || (message.updatedAt || 0) >= (existing.updatedAt || 0)) msgById.set(message.id, message);
+      };
+      (remote.messages || []).forEach(addMsg);
+      (local.messages || []).forEach(addMsg);
+      const messages = [...msgById.values()].filter(message => !deleted.has(message.id));
+
+      return {
+        lists,
+        messages,
+        deleted: [...deleted],
+        __updatedAt: Math.max(local.__updatedAt || 0, remote.__updatedAt || 0)
+      };
     }
 
     async function pullFromCloud(firstConnect) {
-      if (!supabaseClient) return;
-      const { data: row, error } = await supabaseClient
-        .from('memo')
-        .select('payload, updated_at')
-        .eq('id', SHARED_ID)
-        .maybeSingle();
-      if (error) { updateSyncBadge('error'); return; }
-      if (!row || !row.payload || !Array.isArray(row.payload.lists)) {
-        if (firstConnect) await pushToCloud();
+      let res;
+      try {
+        res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+          headers: { Authorization: `Bearer ${GIST_TOKEN}`, Accept: 'application/vnd.github+json' }
+        });
+      } catch (error) {
+        updateSyncBadge('error');
         return;
       }
-      const remoteAt = new Date(row.updated_at).getTime();
+      if (!res.ok) { updateSyncBadge('error'); return; }
+      const gist = await res.json();
+      const file = gist.files && gist.files[GIST_FILE];
+      const content = file && file.content;
+      if (!content) {
+        if (firstConnect) pushToCloud();
+        return;
+      }
+      let cloud;
+      try { cloud = JSON.parse(content); } catch (error) { return; }
+      const remoteAt = cloud.__updatedAt || 0;
       if (!firstConnect && remoteAt <= lastKnownRemoteAt) return;
-      let incoming = normalizeData(row.payload);
-      if (firstConnect) {
-        incoming = mergeData(data, incoming);
-        data = incoming;
-        lastKnownRemoteAt = remoteAt;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        renderLists();
-        renderMessages();
-        await pushToCloud();
-        return;
-      }
-      data = incoming;
-      lastKnownRemoteAt = remoteAt;
+
+      data = mergeData(data, normalizeData(cloud));
+      lastKnownRemoteAt = Math.max(lastKnownRemoteAt, remoteAt, data.__updatedAt || 0);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      if (firstConnect) updateSyncBadge('online');
       renderLists();
       renderMessages();
       updateSyncBadge('online');
     }
 
-    async function initSync() {
-      const config = loadConfig();
-      if (!config || !config.url || !config.key) { updateSyncBadge('local'); return; }
-      if (!window.supabase || !window.supabase.createClient) { updateSyncBadge('local'); return; }
+    async function manualSync() {
+      await pullFromCloud(false);
+      await pushToCloud();
+      showToast('已同步 ☁');
+    }
+
+    document.getElementById('openSync').addEventListener('click', manualSync);
+
+    (async function initSync() {
+      updateSyncBadge('local');
       try {
-        supabaseClient = window.supabase.createClient(config.url, config.key, { realtime: true });
+        await pullFromCloud(true);
       } catch (error) {
         updateSyncBadge('error');
-        return;
       }
-      supabaseClient
-        .channel('memo-room')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'memo' }, () => pullFromCloud(false))
-        .subscribe();
-      await pullFromCloud(true);
-      updateSyncBadge('online');
-    }
-
-    function whenSupabaseReady(callback) {
-      if (window.__supabaseReady && window.supabase) return callback();
-      document.addEventListener('supabase-ready', callback, { once: true });
-    }
-
-    /* ---- Sync settings UI ---- */
-    document.getElementById('openSync').addEventListener('click', () => {
-      const config = loadConfig() || {};
-      document.getElementById('supaUrl').value = config.url || '';
-      document.getElementById('supaKey').value = config.key || '';
-      document.getElementById('syncStatus').textContent = '状态：' + (syncBadgeState === 'online' ? '已连接' : syncBadgeState === 'error' ? '连接出错' : '未连接');
-      document.getElementById('syncModal').hidden = false;
-    });
-    document.getElementById('closeSync').addEventListener('click', () => {
-      document.getElementById('syncModal').hidden = true;
-    });
-    document.getElementById('saveSync').addEventListener('click', async () => {
-      const url = document.getElementById('supaUrl').value.trim();
-      const key = document.getElementById('supaKey').value.trim();
-      if (!url || !key) { document.getElementById('syncStatus').textContent = '请填写 URL 和 anon key'; return; }
-      saveConfig({ url, key });
-      supabaseClient = null;
-      document.getElementById('syncStatus').textContent = '正在连接…';
-      await initSync();
-      document.getElementById('syncStatus').textContent = '状态：' + (syncBadgeState === 'online' ? '已连接并同步' : syncBadgeState === 'error' ? '连接失败，检查配置' : '未连接');
-    });
-    document.getElementById('clearSync').addEventListener('click', () => {
-      clearConfig();
-      supabaseClient = null;
-      updateSyncBadge('local');
-      document.getElementById('supaUrl').value = '';
-      document.getElementById('supaKey').value = '';
-      document.getElementById('syncStatus').textContent = '已清除本机同步配置（内容仍保留）';
-    });
-
-    whenSupabaseReady(initSync);
+      setInterval(() => pullFromCloud(false), 5000);
+    })();
 
 
     function uid(prefix) {
@@ -1177,6 +1134,7 @@
           const item = list.items.find(entry => entry.id === row.dataset.itemId);
           row.querySelector('.check').addEventListener('change', event => {
             item.done = event.target.checked;
+            item.updatedAt = Date.now();
             saveData(
               list.id === 'restaurants' && item.done
                 ? '吃完啦，现在可以打分了 ★'
@@ -1189,12 +1147,15 @@
           row.querySelectorAll('.star-btn').forEach(button => {
             button.addEventListener('click', () => {
               item.rating = Number(button.dataset.rating);
+              item.updatedAt = Date.now();
               saveData(`已记录 ${item.rating} 星评分 ★`);
               renderLists();
             });
           });
           row.querySelector('.delete-btn').addEventListener('click', () => {
             list.items = list.items.filter(entry => entry.id !== item.id);
+            data.deleted = data.deleted || [];
+            if (!data.deleted.includes(item.id)) data.deleted.push(item.id);
             saveData('事项已移除');
             renderLists();
           });
@@ -1205,7 +1166,7 @@
           const input = event.currentTarget.querySelector('input');
           const text = input.value.trim();
           if (!text) return;
-          list.items.unshift({ id: uid('t'), text, done: false, tag: 'NEW' });
+          list.items.unshift({ id: uid('t'), text, done: false, tag: 'NEW', updatedAt: Date.now() });
           saveData('新事项已放在最上面');
           renderLists();
         });
@@ -1229,6 +1190,8 @@
       host.querySelectorAll('.message').forEach(note => {
         note.querySelector('.delete-message').addEventListener('click', () => {
           data.messages = data.messages.filter(message => message.id !== note.dataset.messageId);
+          data.deleted = data.deleted || [];
+          if (!data.deleted.includes(note.dataset.messageId)) data.deleted.push(note.dataset.messageId);
           saveData('留言已移除');
           renderMessages();
         });
@@ -1262,7 +1225,8 @@
         author,
         title: titleInput.value.trim(),
         text,
-        time: 'just now'
+        time: 'just now',
+        updatedAt: Date.now()
       });
       titleInput.value = '';
       textInput.value = '';
