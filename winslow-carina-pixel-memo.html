@@ -690,6 +690,7 @@
     .message p { font-size: 12px; font-weight: 600; }
     .footer { margin-top: 24px; font-size: 10px; font-weight: 600; }
     .toast { border-width: 1px; box-shadow: 2px 2px 0 var(--pink); }
+    .sync-btn { border-width: 1px; box-shadow: 2px 2px 0 var(--shadow); font-size: 11px; padding: 7px 10px; }
 
     @media (max-width: 850px) {
       .content-grid { grid-template-columns: 1fr; }
@@ -702,14 +703,57 @@
       .stat { display: block; text-align: center; padding: 9px 4px; }
       .stat-label { display: block; margin-bottom: 4px; }
     }
+    .sync-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--muted);
+      display: inline-block;
+    }
+    .sync-dot.online { background: var(--mint); }
+    .sync-dot.error { background: var(--pink-dark); }
+    .sync-btn {
+      border: 3px solid var(--border);
+      background: var(--paper);
+      padding: 8px 11px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 #ddc8cf;
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 12px;
+    }
+    .sync-btn:hover { transform: translate(-1px, -1px); }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 40;
+      background: rgba(57, 50, 57, .45);
+      display: grid; place-items: center;
+      padding: 18px;
+    }
+    .modal-backdrop[hidden] { display: none; }
+    .modal { width: min(440px, 100%); background: var(--paper); }
+    .modal .card-head { background: var(--pink-soft); }
+    .modal-body { padding: 16px 17px 18px; display: grid; gap: 11px; }
+    .modal-body p { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.6; }
+    .modal-body label { display: grid; gap: 5px; font-size: 11px; font-weight: 700; color: var(--muted); }
+    .sync-status { font-size: 11px; font-weight: 700; color: var(--muted); }
+    .modal-actions { display: flex; gap: 9px; flex-wrap: wrap; }
   </style>
+  <script type="module">
+    import * as supabase from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    window.supabase = supabase;
+    window.__supabaseReady = true;
+    document.dispatchEvent(new CustomEvent('supabase-ready'));
+  </script>
 </head>
 <body>
   <main class="page-shell">
     <header class="hero pixel-border">
       <div class="topline">
         <div class="brand-chip"><span class="tiny-heart"></span> Winslow × Carina</div>
-        <div class="date-badge" id="today">OUR LITTLE SPACE</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="date-badge" id="today">OUR LITTLE SPACE</span>
+          <button class="sync-btn" id="openSync" type="button"><span class="sync-dot" id="syncDot"></span> 同步</button>
+        </div>
       </div>
       <div class="hero-copy">
         <div>
@@ -762,9 +806,28 @@
 
     <footer class="footer">
       Made for W + C with tiny pixels and a very big <span class="heart-char">♥</span><br>
-      所有勾选和新内容都会自动保存在这台设备的浏览器里。
+      内容会先保存在这台设备；开启云端同步后，你和 Carina 在任何设备都能实时看到彼此的更新。
     </footer>
   </main>
+
+  <div class="modal-backdrop" id="syncModal" hidden>
+    <div class="modal pixel-border">
+      <div class="card-head">
+        <div class="card-title"><span class="pixel-icon">☁</span><h2>云端同步设置</h2></div>
+        <button class="delete-btn" id="closeSync" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p>填入你们 Supabase 项目的 URL 和 anon public key，双方设备各填一次即可实时同步。配置只存在本机浏览器，不会上传到代码仓库。</p>
+        <label>Project URL<input class="pixel-input" id="supaUrl" placeholder="https://xxxx.supabase.co" spellcheck="false"></label>
+        <label>anon public key<textarea class="pixel-textarea" id="supaKey" placeholder="eyJ..." spellcheck="false"></textarea></label>
+        <div class="sync-status" id="syncStatus">状态：未连接</div>
+        <div class="modal-actions">
+          <button class="pixel-btn" id="saveSync" type="button">保存并连接</button>
+          <button class="pixel-btn" id="clearSync" type="button">清除本机配置</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite">已保存</div>
 
   <script>
@@ -870,7 +933,170 @@
     function saveData(message = '已自动保存 ♥') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       showToast(message);
+      schedulePush();
     }
+
+    /* ---- Cloud sync via Supabase ---- */
+    const SUPABASE_CONFIG_KEY = 'winslow-carina-supabase-config';
+    const SHARED_ID = 'shared';
+    let supabaseClient = null;
+    let lastKnownRemoteAt = 0;
+    let pushTimer = null;
+    let syncBadgeState = 'local';
+
+    const clone = value => JSON.parse(JSON.stringify(value));
+
+    function loadConfig() {
+      try { return JSON.parse(localStorage.getItem(SUPABASE_CONFIG_KEY)) || null; }
+      catch (error) { return null; }
+    }
+    function saveConfig(config) {
+      localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(config));
+    }
+    function clearConfig() {
+      localStorage.removeItem(SUPABASE_CONFIG_KEY);
+    }
+
+    function updateSyncBadge(state) {
+      syncBadgeState = state;
+      const dot = document.getElementById('syncDot');
+      const btn = document.getElementById('openSync');
+      if (!dot) return;
+      dot.className = 'sync-dot ' + (state === 'online' ? 'online' : state === 'error' ? 'error' : '');
+      if (btn) btn.title = state === 'online' ? '已连接云端，实时同步中' : state === 'error' ? '云端连接出错' : '仅本机保存，点击设置同步';
+    }
+
+    function schedulePush() {
+      if (!supabaseClient) return;
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(() => pushToCloud(), 350);
+    }
+
+    async function pushToCloud() {
+      if (!supabaseClient) return;
+      const payload = clone(data);
+      const { error } = await supabaseClient
+        .from('memo')
+        .upsert({ id: SHARED_ID, payload, updated_at: new Date().toISOString() });
+      if (error) { updateSyncBadge('error'); return; }
+      lastKnownRemoteAt = Math.max(lastKnownRemoteAt, Date.now());
+      updateSyncBadge('online');
+    }
+
+    function normalizeData(raw) {
+      const obj = raw && typeof raw === 'object' ? raw : {};
+      const lists = Array.isArray(obj.lists) ? obj.lists : [];
+      seedData.lists.forEach((seedList, index) => {
+        if (!lists.some(list => list.id === seedList.id)) {
+          lists.splice(index, 0, clone(seedList));
+        }
+      });
+      const messages = Array.isArray(obj.messages) ? obj.messages : [];
+      return { lists, messages };
+    }
+
+    function mergeData(local, remote) {
+      const result = clone(remote);
+      const localLists = Object.fromEntries(local.lists.map(list => [list.id, list]));
+      result.lists.forEach(list => {
+        const source = localLists[list.id];
+        if (!source) return;
+        const ids = new Set(list.items.map(item => item.id));
+        source.items.forEach(item => { if (!ids.has(item.id)) list.items.push(clone(item)); });
+      });
+      const remoteIds = new Set(result.messages.map(message => message.id));
+      result.messages = local.messages.filter(message => !remoteIds.has(message.id)).concat(result.messages);
+      return result;
+    }
+
+    async function pullFromCloud(firstConnect) {
+      if (!supabaseClient) return;
+      const { data: row, error } = await supabaseClient
+        .from('memo')
+        .select('payload, updated_at')
+        .eq('id', SHARED_ID)
+        .maybeSingle();
+      if (error) { updateSyncBadge('error'); return; }
+      if (!row || !row.payload || !Array.isArray(row.payload.lists)) {
+        if (firstConnect) await pushToCloud();
+        return;
+      }
+      const remoteAt = new Date(row.updated_at).getTime();
+      if (!firstConnect && remoteAt <= lastKnownRemoteAt) return;
+      let incoming = normalizeData(row.payload);
+      if (firstConnect) {
+        incoming = mergeData(data, incoming);
+        data = incoming;
+        lastKnownRemoteAt = remoteAt;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        renderLists();
+        renderMessages();
+        await pushToCloud();
+        return;
+      }
+      data = incoming;
+      lastKnownRemoteAt = remoteAt;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      renderLists();
+      renderMessages();
+      updateSyncBadge('online');
+    }
+
+    async function initSync() {
+      const config = loadConfig();
+      if (!config || !config.url || !config.key) { updateSyncBadge('local'); return; }
+      if (!window.supabase || !window.supabase.createClient) { updateSyncBadge('local'); return; }
+      try {
+        supabaseClient = window.supabase.createClient(config.url, config.key, { realtime: true });
+      } catch (error) {
+        updateSyncBadge('error');
+        return;
+      }
+      supabaseClient
+        .channel('memo-room')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'memo' }, () => pullFromCloud(false))
+        .subscribe();
+      await pullFromCloud(true);
+      updateSyncBadge('online');
+    }
+
+    function whenSupabaseReady(callback) {
+      if (window.__supabaseReady && window.supabase) return callback();
+      document.addEventListener('supabase-ready', callback, { once: true });
+    }
+
+    /* ---- Sync settings UI ---- */
+    document.getElementById('openSync').addEventListener('click', () => {
+      const config = loadConfig() || {};
+      document.getElementById('supaUrl').value = config.url || '';
+      document.getElementById('supaKey').value = config.key || '';
+      document.getElementById('syncStatus').textContent = '状态：' + (syncBadgeState === 'online' ? '已连接' : syncBadgeState === 'error' ? '连接出错' : '未连接');
+      document.getElementById('syncModal').hidden = false;
+    });
+    document.getElementById('closeSync').addEventListener('click', () => {
+      document.getElementById('syncModal').hidden = true;
+    });
+    document.getElementById('saveSync').addEventListener('click', async () => {
+      const url = document.getElementById('supaUrl').value.trim();
+      const key = document.getElementById('supaKey').value.trim();
+      if (!url || !key) { document.getElementById('syncStatus').textContent = '请填写 URL 和 anon key'; return; }
+      saveConfig({ url, key });
+      supabaseClient = null;
+      document.getElementById('syncStatus').textContent = '正在连接…';
+      await initSync();
+      document.getElementById('syncStatus').textContent = '状态：' + (syncBadgeState === 'online' ? '已连接并同步' : syncBadgeState === 'error' ? '连接失败，检查配置' : '未连接');
+    });
+    document.getElementById('clearSync').addEventListener('click', () => {
+      clearConfig();
+      supabaseClient = null;
+      updateSyncBadge('local');
+      document.getElementById('supaUrl').value = '';
+      document.getElementById('supaKey').value = '';
+      document.getElementById('syncStatus').textContent = '已清除本机同步配置（内容仍保留）';
+    });
+
+    whenSupabaseReady(initSync);
+
 
     function uid(prefix) {
       return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
