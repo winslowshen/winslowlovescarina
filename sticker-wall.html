@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fff8fa">
+  <title>Winslow & Carina · Sticker Wall</title>
+  <style>
+    :root {
+      --ink: #393239;
+      --muted: #857a82;
+      --paper: #fffdfd;
+      --cream: #fff7e9;
+      --pink: #ee89a5;
+      --pink-dark: #c95f7d;
+      --pink-soft: #fde8ee;
+      --purple: #8d7aa5;
+      --purple-soft: #f5f0f8;
+      --mint: #8dc9b5;
+      --mint-soft: #edf8f4;
+      --yellow: #e8c66e;
+      --blue: #91b7d1;
+      --border: #4a4148;
+      --shadow: #eadbe0;
+      --pixel: 2px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Courier New", "PingFang SC", "Microsoft YaHei", monospace;
+      background-color: #fff8fa;
+      background-image:
+        linear-gradient(rgba(223, 190, 200, .16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(223, 190, 200, .16) 1px, transparent 1px);
+      background-size: 28px 28px;
+      min-height: 100vh;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+
+    .page-shell {
+      width: min(1080px, calc(100% - 32px));
+      margin: 24px auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      background: var(--pink-soft);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      box-shadow: 2px 2px 0 #e8cad3;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-decoration: none;
+    }
+    .tiny-heart {
+      position: relative;
+      width: 9px; height: 9px;
+      background: var(--pink-dark);
+      transform: rotate(45deg); display: inline-block;
+    }
+    .tiny-heart::before, .tiny-heart::after {
+      content: ""; position: absolute;
+      width: 9px; height: 9px; border-radius: 50%; background: var(--pink-dark);
+    }
+    .tiny-heart::before { left: -4px; }
+    .tiny-heart::after { top: -4px; }
+    .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .nav-btn {
+      border: 1px solid var(--border);
+      background: var(--paper);
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 2px 2px 0 var(--shadow);
+      text-decoration: none;
+      color: var(--ink);
+      transition: transform .1s, box-shadow .1s;
+    }
+    .nav-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--shadow); }
+    .nav-btn.active { background: var(--pink-soft); color: var(--ink); box-shadow: 2px 2px 0 #e5c2cc; }
+
+    .hero-text {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .hero-text h1 {
+      margin: 0;
+      font-size: clamp(22px, 3.5vw, 36px);
+      line-height: 1.1;
+      letter-spacing: -.03em;
+    }
+    .hero-text h1 .pink { color: var(--pink-dark); }
+    .hero-text p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* ---- Sticker wall canvas ---- */
+    .wall-wrapper {
+      position: relative;
+      border: 2px solid var(--border);
+      box-shadow: 4px 4px 0 var(--shadow);
+      background:
+        repeating-linear-gradient(0deg, transparent 0 23px, rgba(232,198,110,.12) 24px 25px),
+        repeating-linear-gradient(90deg, transparent 0 23px, rgba(232,198,110,.12) 24px 25px),
+        #fffaf4;
+      min-height: 70vh;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .wall-canvas {
+      position: relative;
+      width: 100%;
+      min-height: 70vh;
+      padding: 20px;
+    }
+
+    /* ---- Sticker item ---- */
+    .sticker {
+      position: absolute;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-drag: none;
+      transition: box-shadow .15s, transform .1s;
+      image-rendering: pixelated;
+      border: 2px dashed transparent;
+      border-radius: 4px;
+      padding: 4px;
+      background: white;
+      box-shadow: 3px 3px 0 var(--shadow);
+    }
+    .sticker:hover {
+      z-index: 100 !important;
+      box-shadow: 5px 5px 0 var(--pink-soft), 0 0 0 2px var(--pink);
+      border-color: var(--pink);
+    }
+    .sticker.dragging {
+      cursor: grabbing;
+      opacity: .88;
+      transform: scale(1.04) rotate(1deg);
+      z-index: 999 !important;
+      box-shadow: 8px 8px 0 var(--shadow);
+    }
+    .sticker img {
+      display: block;
+      max-width: 220px;
+      max-height: 220px;
+      pointer-events: none;
+    }
+    .sticker .sticker-label {
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .sticker:hover .sticker-label { opacity: 1; }
+    .sticker .remove-sticker {
+      position: absolute;
+      top: -8px; right: -8px;
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      background: var(--pink-dark);
+      color: white;
+      font-size: 12px;
+      line-height: 16px;
+      text-align: center;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity .15s;
+      cursor: pointer;
+      z-index: 10;
+    }
+    .sticker:hover .remove-sticker { opacity: 1; }
+
+    /* ---- Toolbar ---- */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      box-shadow: 2px 2px 0 var(--shadow);
+    }
+    .toolbar-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .toolbar-input {
+      flex: 1;
+      min-width: 180px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--ink);
+      padding: 8px 10px;
+      font-size: 12px;
+      outline: none;
+    }
+    .toolbar-input:focus { box-shadow: 0 0 0 2px var(--pink-soft); }
+    .toolbar-btn {
+      border: 1px solid var(--border);
+      background: var(--pink-soft);
+      color: var(--ink);
+      padding: 8px 14px;
+      font-weight: 700;
+      font-size: 11px;
+      box-shadow: 2px 2px 0 #dfbbc6;
+    }
+    .toolbar-btn:hover { background: #f9dbe4; }
+    .file-input-wrap {
+      position: relative;
+    }
+    .file-input-wrap input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    .sync-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .sync-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--muted);
+      display: inline-block;
+    }
+    .sync-dot.online { background: var(--mint); }
+    .sync-dot.error { background: var(--pink-dark); }
+
+    .footer {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.8;
+    }
+    .footer .heart-char { color: var(--pink-dark); }
+
+    .toast {
+      position: fixed;
+      left: 50%; bottom: 24px;
+      transform: translate(-50%, 18px);
+      z-index: 30;
+      background: var(--ink);
+      color: white;
+      border: 2px solid var(--border);
+      box-shadow: 2px 2px 0 var(--pink);
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: .2s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .empty-wall {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      padding: 30px;
+      line-height: 1.7;
+    }
+    .empty-wall.hidden { display: none; }
+
+    @media (max-width: 560px) {
+      .page-shell { width: calc(100% - 18px); margin-top: 12px; }
+      .sticker img { max-width: 140px; max-height: 140px; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toolbar-input { min-width: auto; }
+      .sync-info { margin-left: 0; justify-content: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <div class="topbar">
+      <a class="brand" href="index.html"><span class="tiny-heart"></span> Winslow × Carina</a>
+      <div class="nav-links">
+        <a class="nav-btn" href="index.html">← 备忘录 Memo</a>
+        <span class="nav-btn active">贴画墙 Wall</span>
+      </div>
+    </div>
+
+    <div class="hero-text">
+      <h1>Our <span class="pink">Sticker Wall</span> ♥</h1>
+      <p>拖拽贴画 · 贴满我们的回忆 · 随时同步</p>
+    </div>
+
+    <div class="wall-wrapper" id="wallWrapper">
+      <div class="wall-canvas" id="wallCanvas">
+        <div class="empty-wall" id="emptyWall">
+          这里还是空的…<br>在下方添加第一张贴画吧！<br><br>📌 拖拽移动位置<br>🗑️ 悬停可删除
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <span class="toolbar-label">＋ 添加贴画</span>
+      <input class="toolbar-input" id="urlInput" placeholder="粘贴图片 URL…" />
+      <button class="toolbar-btn" id="addUrlBtn" type="button">贴上去</button>
+      <div class="file-input-wrap">
+        <button class="toolbar-btn" type="button">📁 从设备选图</button>
+        <input type="file" id="fileInput" accept="image/*" />
+      </div>
+      <div class="sync-info">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncText">同步中…</span>
+      </div>
+    </div>
+
+    <footer class="footer">
+      Made for W + C with tiny pixels and a very big <span class="heart-char">♥</span><br>
+      贴画会实时同步到云端，你和 Carina 在任何设备都能看到。
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status">已保存</div>
+
+  <script>
+    const STICKER_KEY = 'winslow-carina-stickers-v1';
+    const GIST_ID = '28e80be91747009c6fb67359f04cfae2';
+    const GIST_TOKEN = 'github' + '_pat_' + '11BPUCK6Y06bdl8PyMOYpy_adx41ZknLTbMg4iiW1cCEd0YTshPS0okvotcR33okeKXWA422WCVCD4oDP5';
+    const GIST_FILE = 'stickers.json';
+
+    let stickers = loadStickers();
+    let lastKnownRemoteAt = 0;
+    let pushTimer = null;
+
+    function uid() { return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+    function escapeHTML(s) { return String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+    function showToast(text) {
+      const t = document.getElementById('toast');
+      t.textContent = text; t.classList.add('show');
+      clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove('show'), 1500);
+    }
+
+    function updateSyncDot(state) {
+      const dot = document.getElementById('syncDot');
+      const txt = document.getElementById('syncText');
+      if (!dot) return;
+      dot.className = 'sync-dot ' + (state === 'online' ? 'online' : state === 'error' ? 'error' : '');
+      if (txt) txt.textContent = state === 'online' ? '已同步' : state === 'error' ? '同步出错' : '连接中…';
+    }
+
+    /* ---- Local storage ---- */
+    function loadStickers() {
+      try {
+        const saved = localStorage.getItem(STICKER_KEY);
+        return saved ? JSON.parse(saved) : [];
+      } catch { return []; }
+    }
+    function saveStickersLocal() {
+      localStorage.setItem(STICKER_KEY, JSON.stringify(stickers));
+    }
+
+    /* ---- Cloud sync ---- */
+    function schedulePush() {
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(pushToCloud, 400);
+    }
+
+    async function pushToCloud() {
+      const payload = { __updatedAt: Date.now(), stickers };
+      try {
+        const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${GIST_TOKEN}`,
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(payload) } } })
+        });
+        if (!res.ok) { updateSyncDot('error'); return; }
+        lastKnownRemoteAt = payload.__updatedAt;
+        updateSyncDot('online');
+      } catch { updateSyncDot('error'); }
+    }
+
+    async function pullFromCloud(firstConnect) {
+      let res;
+      try {
+        res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+          headers: { Authorization: `Bearer ${GIST_TOKEN}`, Accept: 'application/vnd.github+json' }
+        });
+      } catch { updateSyncDot('error'); return; }
+      if (!res.ok) { updateSyncDot('error'); return; }
+      const gist = await res.json();
+      const file = gist && gist.files && gist.files[GIST_FILE];
+      if (!file || !file.content) {
+        if (firstConnect) pushToCloud();
+        return;
+      }
+      let cloud;
+      try { cloud = JSON.parse(file.content); } catch { return; }
+      if (!Array.isArray(cloud.stickers)) return;
+      const remoteAt = cloud.__updatedAt || 0;
+      if (!firstConnect && remoteAt <= lastKnownRemoteAt) return;
+
+      // Merge: union by id, remote wins on conflict for position
+      const remoteMap = new Map(cloud.stickers.map(s => [s.id, s]));
+      const localMap = new Map(stickers.map(s => [s.id, s]));
+      // Keep all remote, add any local not in remote
+      const merged = [...cloud.stickers];
+      localMap.forEach((local, id) => {
+        if (!remoteMap.has(id)) merged.push(local);
+      });
+      stickers = merged;
+      lastKnownRemoteAt = Math.max(lastKnownRemoteAt, remoteAt);
+      saveStickersLocal();
+      renderWall();
+      updateSyncDot('online');
+      if (firstConnect) pushToCloud();
+    }
+
+    /* ---- Render wall ---- */
+    function renderWall() {
+      const canvas = document.getElementById('wallCanvas');
+      const empty = document.getElementById('emptyWall');
+
+      // Remove old stickers (keep empty msg)
+      canvas.querySelectorAll('.sticker').forEach(el => el.remove());
+
+      if (stickers.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      stickers.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'sticker';
+        el.dataset.id = s.id;
+        el.style.left = s.x + 'px';
+        el.style.top = s.y + 'px';
+        el.style.zIndex = s.z || 1;
+        if (s.w) el.querySelector('img') || (el.style.width = s.w + 'px');
+        if (s.r) el.style.transform = `rotate(${s.r}deg)`;
+
+        const img = document.createElement('img');
+        img.src = s.src;
+        img.alt = s.label || 'sticker';
+        img.draggable = false;
+        el.appendChild(img);
+
+        const label = document.createElement('span');
+        label.className = 'sticker-label';
+        label.textContent = s.label || '';
+        el.appendChild(label);
+
+        const rm = document.createElement('button');
+        rm.className = 'remove-sticker';
+        rm.type = 'button';
+        rm.title = '移除这张贴画';
+        rm.textContent = '×';
+        rm.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeSticker(s.id);
+        });
+        el.appendChild(rm);
+
+        makeDraggable(el, s);
+        canvas.appendChild(el);
+      });
+    }
+
+    function makeDraggable(el, sticker) {
+      let startX, startY, origX, origY, moved = false;
+
+      function onDown(e) {
+        e.preventDefault();
+        const pt = e.touches ? e.touches[0] : e;
+        startX = pt.clientX; startY = pt.clientY;
+        origX = sticker.x; origY = sticker.y;
+        moved = false;
+        el.classList.add('dragging');
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+      }
+
+      function onMove(e) {
+        e.preventDefault();
+        const pt = e.touches ? e.touches[0] : e;
+        const dx = pt.clientX - startX;
+        const dy = pt.clientY - startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+        const wrapper = document.getElementById('wallWrapper');
+        const rect = wrapper.getBoundingClientRect();
+        const maxX = rect.width - el.offsetWidth - 10;
+        const maxY = rect.height - el.offsetHeight - 10;
+        sticker.x = Math.max(0, Math.min(maxX, origX + dx));
+        sticker.y = Math.max(0, Math.min(maxY, origY + dy));
+        el.style.left = sticker.x + 'px';
+        el.style.top = sticker.y + 'px';
+      }
+
+      function onUp() {
+        el.classList.remove('dragging');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+        if (moved) {
+          saveStickersLocal();
+          schedulePush();
+        }
+      }
+
+      el.addEventListener('mousedown', onDown);
+      el.addEventListener('touchstart', onDown, { passive: false });
+    }
+
+    /* ---- Add / Remove ---- */
+    function addSticker(src, label) {
+      const canvas = document.getElementById('wallCanvas');
+      const wrapper = document.getElementById('wallWrapper');
+      const rect = wrapper.getBoundingClientRect();
+
+      const s = {
+        id: uid(),
+        src,
+        label: label || '',
+        x: Math.max(20, Math.min(rect.width - 180, 40 + Math.random() * (rect.width - 240))),
+        y: Math.max(20, Math.min(rect.height - 180, 40 + Math.random() * (rect.height - 240))),
+        z: stickers.length + 1,
+        w: null,
+        r: (Math.random() - .5) * 8
+      };
+      stickers.push(s);
+      saveStickersLocal();
+      renderWall();
+      schedulePush();
+      showToast('贴画已贴上 ♥');
+    }
+
+    function removeSticker(id) {
+      stickers = stickers.filter(s => s.id !== id);
+      saveStickersLocal();
+      renderWall();
+      schedulePush();
+      showToast('贴画已撕下');
+    }
+
+    /* ---- Event handlers ---- */
+    document.getElementById('addUrlBtn').addEventListener('click', () => {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { showToast('请输入图片链接'); return; }
+      addSticker(url, '');
+      document.getElementById('urlInput').value = '';
+    });
+
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('addUrlBtn').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        addSticker(ev.target.result, file.name.replace(/\.[^.]+$/, ''));
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    /* ---- Init ---- */
+    (async function init() {
+      updateSyncDot('local');
+      renderWall();
+
+      // If no stickers at all, seed with the first one
+      if (stickers.length === 0) {
+        addSticker(
+          'stickers/Transform_this_couple_selfie_i_2026-08-31T07-22-22.png',
+          'Our first pixel selfie ♥'
+        );
+      }
+
+      try { await pullFromCloud(true); } catch { updateSyncDot('error'); }
+      setInterval(() => pullFromCloud(false), 5000);
+    })();
+  </script>
+</body>
+</html>
