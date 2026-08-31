@@ -751,7 +751,7 @@
     <section class="stats" aria-label="备忘录统计">
       <div class="stat"><span class="stat-label">TO DO<br>还没完成</span><strong id="todoCount">0</strong></div>
       <div class="stat"><span class="stat-label">DONE<br>已经完成</span><strong id="doneCount">0</strong></div>
-      <div class="stat"><span class="stat-label">IN LOVE<br>相爱时间</span><strong>∞</strong></div>
+      <div class="stat"><span class="stat-label">IN LOVE<br>在一起</span><strong id="loveDays">—</strong></div>
     </section>
 
     <nav class="tabs" aria-label="事项筛选">
@@ -1237,6 +1237,16 @@
 
     const dateFormatter = new Intl.DateTimeFormat('en', { month: 'short', day: '2-digit', year: 'numeric' });
     document.getElementById('today').textContent = dateFormatter.format(new Date()).toUpperCase();
+
+    /* ---- In-love days counter (since 2026-07-23) ---- */
+    const LOVE_DATE = new Date(2026, 6, 23); // July = 6 (0-indexed)
+    function updateLoveDays() {
+      const now = new Date();
+      const diff = Math.floor((now - LOVE_DATE) / 86400000);
+      const el = document.getElementById('loveDays');
+      if (el) el.textContent = diff + 'd';
+    }
+    updateLoveDays();
 
     renderLists();
     renderMessages();
