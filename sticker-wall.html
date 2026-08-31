@@ -432,6 +432,7 @@
 
     let stickers = loadStickers();
     let lastKnownRemoteAt = 0;
+    let dragJustMoved = false;   // 刚拖过就不触发「改名」
     let pushTimer = null;
 
     /* ---- Month boards ---- */
@@ -578,6 +579,7 @@
       });
       stickers = merged;
       migrateMonths();
+      dedupeBySrc();
       lastKnownRemoteAt = Math.max(lastKnownRemoteAt, remoteAt);
       saveStickersLocal();
       renderWall();
@@ -622,6 +624,17 @@
         const label = document.createElement('span');
         label.className = 'sticker-label';
         label.textContent = s.label || '';
+        label.title = '点一下可以改名字';
+        label.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (dragJustMoved) return;            // 刚刚是在拖拽，不是想改名
+          const next = prompt('给这张贴画起个名字吧～', s.label || '');
+          if (next === null) return;
+          s.label = next.trim();
+          saveStickersLocal();
+          renderWall();
+          schedulePush();
+        });
         el.appendChild(label);
 
         const rm = document.createElement('button');
@@ -647,6 +660,7 @@
 
       function onDown(e) {
         e.preventDefault();
+        dragJustMoved = false;
         const pt = e.touches ? e.touches[0] : e;
         startX = pt.clientX; startY = pt.clientY;
         origX = sticker.x; origY = sticker.y;
@@ -663,7 +677,7 @@
         const pt = e.touches ? e.touches[0] : e;
         const dx = pt.clientX - startX;
         const dy = pt.clientY - startY;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) { moved = true; dragJustMoved = true; }
         const wrapper = document.getElementById('wallWrapper');
         const rect = wrapper.getBoundingClientRect();
         const maxX = rect.width - el.offsetWidth - 10;
@@ -691,7 +705,7 @@
     }
 
     /* ---- Add / Remove ---- */
-    function addSticker(src, label, month) {
+    function addSticker(src, label, month, quiet) {
       const wrapper = document.getElementById('wallWrapper');
       const rect = wrapper.getBoundingClientRect();
       const targetMonth = month || currentMonth;
@@ -711,7 +725,44 @@
       saveStickersLocal();
       renderWall();
       schedulePush();
-      showToast(`贴画已贴上 ${monthLabel(targetMonth)} ♥`);
+      if (!quiet) showToast(`贴画已贴上 ${monthLabel(targetMonth)} ♥`);
+    }
+
+    /* ---- 去掉重复的贴画（两台设备各自种一遍也不会变双份）---- */
+    function dedupeBySrc() {
+      const seen = new Set();
+      const out = [];
+      stickers.forEach(s => {
+        if (seen.has(s.src)) return;
+        seen.add(s.src);
+        out.push(s);
+      });
+      if (out.length !== stickers.length) {
+        stickers = out;
+        saveStickersLocal();
+      }
+    }
+
+    /* ---- 网页自带贴画：以后再加新图，把 SEED_VERSION 加 1 即可 ---- */
+    const SEED_VERSION = 2;
+    const SEED_STICKERS = [
+      { src: 'stickers/Transform_this_couple_selfie_i_2026-08-31T07-22-22.png', label: 'Our first pixel selfie ♥' },
+      { src: 'stickers/Transform_this_photo_into_cute_2026-08-31T07-36-00.png', label: 'Carina & her yellow roses 🌼' },
+      { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-01-55.png', label: 'Us, pixelated 📸' },
+      { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-05-50.png', label: 'Another little moment ✨' }
+    ];
+
+    function seedStickers() {
+      const v = Number(localStorage.getItem(STICKER_KEY + '-seedv') || '0');
+      if (v >= SEED_VERSION) return;
+      let added = 0;
+      SEED_STICKERS.forEach(s => {
+        if (stickers.some(st => st.src === s.src)) return;
+        addSticker(s.src, s.label, currentMonthKey(), true);
+        added++;
+      });
+      localStorage.setItem(STICKER_KEY + '-seedv', String(SEED_VERSION));
+      if (added) showToast(`${added} 张新贴画已上墙 ♥`);
     }
 
     function removeSticker(id) {
@@ -782,21 +833,12 @@
       renderMonthTabs();
       renderWall();
 
-      // If no stickers at all, seed the current month with the first ones
-      if (stickers.length === 0) {
-        addSticker(
-          'stickers/Transform_this_couple_selfie_i_2026-08-31T07-22-22.png',
-          'Our first pixel selfie ♥',
-          currentMonthKey()
-        );
-        addSticker(
-          'stickers/Transform_this_photo_into_cute_2026-08-31T07-36-00.png',
-          'Carina & her yellow roses 🌼',
-          currentMonthKey()
-        );
-      }
+      // 网页自带贴画（只补没贴过的，不会重复）
+      seedStickers();
 
       try { await pullFromCloud(true); } catch { updateSyncDot('error'); }
+      dedupeBySrc();
+      renderWall();
       setInterval(() => pullFromCloud(false), 5000);
     })();
   </script>
