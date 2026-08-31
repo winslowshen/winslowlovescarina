@@ -116,6 +116,58 @@
       font-weight: 600;
     }
 
+    /* ---- Month board switcher ---- */
+    .month-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .month-tabs {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+    .month-tab {
+      position: relative;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      color: var(--muted);
+      padding: 7px 13px;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 2px 2px 0 var(--shadow);
+      transition: transform .1s, box-shadow .1s, background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .month-tab:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 var(--shadow);
+      color: var(--ink);
+    }
+    .month-tab.active {
+      background: var(--pink-soft);
+      color: var(--ink);
+      box-shadow: 2px 2px 0 #e5c2cc;
+    }
+    .month-tab .month-count {
+      margin-left: 5px;
+      font-size: 9px;
+      color: var(--pink-dark);
+    }
+    .month-add-btn {
+      border: 1px dashed var(--border);
+      background: transparent;
+      color: var(--muted);
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 2px 2px 0 var(--shadow);
+    }
+    .month-add-btn:hover { background: var(--mint-soft); color: var(--ink); }
+
     /* ---- Sticker wall canvas ---- */
     .wall-wrapper {
       position: relative;
@@ -334,13 +386,18 @@
 
     <div class="hero-text">
       <h1>Our <span class="pink">Sticker Wall</span> ♥</h1>
-      <p>拖拽贴画 · 贴满我们的回忆 · 随时同步</p>
+      <p>每个月一张画板 · 贴满我们的回忆 · 随时同步</p>
+    </div>
+
+    <div class="month-bar">
+      <div class="month-tabs" id="monthTabs"></div>
+      <button class="month-add-btn" id="addMonthBtn" type="button" title="新增一个月份画板">＋ 新月份</button>
     </div>
 
     <div class="wall-wrapper" id="wallWrapper">
       <div class="wall-canvas" id="wallCanvas">
         <div class="empty-wall" id="emptyWall">
-          这里还是空的…<br>在下方添加第一张贴画吧！<br><br>📌 拖拽移动位置<br>🗑️ 悬停可删除
+          这个月还是空的…<br>在下方添加第一张贴画吧！<br><br>📌 拖拽移动位置<br>🗑️ 悬停可删除
         </div>
       </div>
     </div>
@@ -376,6 +433,67 @@
     let stickers = loadStickers();
     let lastKnownRemoteAt = 0;
     let pushTimer = null;
+
+    /* ---- Month boards ---- */
+    function currentMonthKey() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+    let currentMonth = currentMonthKey();
+    let extraMonths = loadExtraMonths();
+
+    function loadExtraMonths() {
+      try {
+        const saved = localStorage.getItem(STICKER_KEY + '-months');
+        return saved ? JSON.parse(saved) : [];
+      } catch { return []; }
+    }
+    function saveExtraMonths() {
+      localStorage.setItem(STICKER_KEY + '-months', JSON.stringify(extraMonths));
+    }
+
+    // Migrate: any sticker without a month belongs to the month it was created (fallback: now)
+    function migrateMonths() {
+      let changed = false;
+      stickers.forEach(s => {
+        if (!s.month) { s.month = currentMonthKey(); changed = true; }
+      });
+      if (changed) saveStickersLocal();
+    }
+
+    function allMonths() {
+      const set = new Set(extraMonths);
+      set.add(currentMonthKey());      // always offer the current month
+      stickers.forEach(s => { if (s.month) set.add(s.month); });
+      return [...set].sort();
+    }
+
+    function monthLabel(key) {
+      const [y, m] = key.split('-');
+      return y + '.' + Number(m);
+    }
+
+    function countInMonth(key) {
+      return stickers.filter(s => s.month === key).length;
+    }
+
+    function renderMonthTabs() {
+      const host = document.getElementById('monthTabs');
+      if (!host) return;
+      host.innerHTML = allMonths().map(key => `
+        <button class="month-tab ${key === currentMonth ? 'active' : ''}" type="button" data-month="${escapeHTML(key)}">
+          ${escapeHTML(monthLabel(key))}<span class="month-count">${countInMonth(key)}</span>
+        </button>
+      `).join('');
+
+      host.querySelectorAll('.month-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentMonth = btn.dataset.month;
+          renderMonthTabs();
+          renderWall();
+        });
+      });
+    }
 
     function uid() { return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
@@ -459,6 +577,7 @@
         if (!remoteMap.has(id)) merged.push(local);
       });
       stickers = merged;
+      migrateMonths();
       lastKnownRemoteAt = Math.max(lastKnownRemoteAt, remoteAt);
       saveStickersLocal();
       renderWall();
@@ -466,7 +585,7 @@
       if (firstConnect) pushToCloud();
     }
 
-    /* ---- Render wall ---- */
+    /* ---- Render wall (only the selected month's board) ---- */
     function renderWall() {
       const canvas = document.getElementById('wallCanvas');
       const empty = document.getElementById('emptyWall');
@@ -474,13 +593,17 @@
       // Remove old stickers (keep empty msg)
       canvas.querySelectorAll('.sticker').forEach(el => el.remove());
 
-      if (stickers.length === 0) {
+      const boardStickers = stickers.filter(s => s.month === currentMonth);
+
+      if (boardStickers.length === 0) {
+        empty.innerHTML = `${escapeHTML(monthLabel(currentMonth))} 的画板还是空的…<br>在下方添加第一张贴画吧！<br><br>📌 拖拽移动位置<br>🗑️ 悬停可删除`;
         empty.classList.remove('hidden');
+        renderMonthTabs();
         return;
       }
       empty.classList.add('hidden');
 
-      stickers.forEach(s => {
+      boardStickers.forEach(s => {
         const el = document.createElement('div');
         el.className = 'sticker';
         el.dataset.id = s.id;
@@ -515,6 +638,8 @@
         makeDraggable(el, s);
         canvas.appendChild(el);
       });
+
+      renderMonthTabs();
     }
 
     function makeDraggable(el, sticker) {
@@ -566,18 +691,19 @@
     }
 
     /* ---- Add / Remove ---- */
-    function addSticker(src, label) {
-      const canvas = document.getElementById('wallCanvas');
+    function addSticker(src, label, month) {
       const wrapper = document.getElementById('wallWrapper');
       const rect = wrapper.getBoundingClientRect();
+      const targetMonth = month || currentMonth;
 
       const s = {
         id: uid(),
         src,
         label: label || '',
+        month: targetMonth,
         x: Math.max(20, Math.min(rect.width - 180, 40 + Math.random() * (rect.width - 240))),
         y: Math.max(20, Math.min(rect.height - 180, 40 + Math.random() * (rect.height - 240))),
-        z: stickers.length + 1,
+        z: stickers.filter(st => st.month === targetMonth).length + 1,
         w: null,
         r: (Math.random() - .5) * 8
       };
@@ -585,7 +711,7 @@
       saveStickersLocal();
       renderWall();
       schedulePush();
-      showToast('贴画已贴上 ♥');
+      showToast(`贴画已贴上 ${monthLabel(targetMonth)} ♥`);
     }
 
     function removeSticker(id) {
@@ -619,20 +745,54 @@
       e.target.value = '';
     });
 
+    /* ---- Add a new month board ---- */
+    document.getElementById('addMonthBtn').addEventListener('click', () => {
+      const answer = prompt('新增哪个月份的画板？格式：年-月，例如 2026-09');
+      if (!answer) return;
+      const key = answer.trim();
+      if (!/^\d{4}-\d{2}$/.test(key)) {
+        showToast('格式不对，请写 2026-09 这样');
+        return;
+      }
+      const m = Number(key.split('-')[1]);
+      if (m < 1 || m > 12) { showToast('月份要在 01–12 之间'); return; }
+      if (!extraMonths.includes(key)) {
+        extraMonths.push(key);
+        saveExtraMonths();
+      }
+      currentMonth = key;
+      renderMonthTabs();
+      renderWall();
+      showToast(`已切到 ${monthLabel(key)} 画板`);
+    });
+
     /* ---- Init ---- */
     (async function init() {
       updateSyncDot('local');
+
+      // Older stickers had no month field — put them on the current board
+      migrateMonths();
+
+      // Always keep the month we got together (2026-07) available as a board
+      if (!extraMonths.includes('2026-07')) {
+        extraMonths.push('2026-07');
+        saveExtraMonths();
+      }
+
+      renderMonthTabs();
       renderWall();
 
-      // If no stickers at all, seed with the first ones
+      // If no stickers at all, seed the current month with the first ones
       if (stickers.length === 0) {
         addSticker(
           'stickers/Transform_this_couple_selfie_i_2026-08-31T07-22-22.png',
-          'Our first pixel selfie ♥'
+          'Our first pixel selfie ♥',
+          currentMonthKey()
         );
         addSticker(
           'stickers/Transform_this_photo_into_cute_2026-08-31T07-36-00.png',
-          'Carina & her yellow roses 🌼'
+          'Carina & her yellow roses 🌼',
+          currentMonthKey()
         );
       }
 
