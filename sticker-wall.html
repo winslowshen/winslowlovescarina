@@ -462,6 +462,21 @@
       if (changed) saveStickersLocal();
     }
 
+    /* ---- 换图：旧图自动替换成新图，不会变成两张 ---- */
+    const SRC_REPLACEMENTS = {
+      'stickers/Transform_this_vertical_mirror_2026-09-22T14-42-51.png':
+        'stickers/Transform_this_vertical_mirror_2026-09-22T15-29-24.png'
+    };
+
+    function migrateSrcs() {
+      let changed = false;
+      stickers.forEach(s => {
+        const to = SRC_REPLACEMENTS[s.src];
+        if (to) { s.src = to; changed = true; }
+      });
+      if (changed) { saveStickersLocal(); schedulePush(); }
+    }
+
     function allMonths() {
       const set = new Set(extraMonths);
       set.add(currentMonthKey());      // always offer the current month
@@ -579,6 +594,7 @@
       });
       stickers = merged;
       migrateMonths();
+      migrateSrcs();
       dedupeBySrc();
       lastKnownRemoteAt = Math.max(lastKnownRemoteAt, remoteAt);
       saveStickersLocal();
@@ -751,7 +767,7 @@
       { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-01-55.png', label: 'Us, pixelated 📸' },
       { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-05-50.png', label: 'Another little moment ✨' },
       { src: 'stickers/Transform_this_photo_into_a_cu_2026-09-05T02-49-47.png', label: 'Carina 骑白马 🌙' },
-      { src: 'stickers/Transform_this_vertical_mirror_2026-09-22T14-42-51.png', label: '镜子里的我们 🪞' }
+      { src: 'stickers/Transform_this_vertical_mirror_2026-09-22T15-29-24.png', label: '镜子里的我们 🪞' }
     ];
 
     function seedStickers() {
@@ -825,6 +841,9 @@
 
       // Older stickers had no month field — put them on the current board
       migrateMonths();
+
+      // 旧版贴画换成重画的新版（比如脸型调整过）
+      migrateSrcs();
 
       // Always keep the month we got together (2026-07) available as a board
       if (!extraMonths.includes('2026-07')) {
