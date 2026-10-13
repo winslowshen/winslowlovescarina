@@ -759,18 +759,23 @@
       }
     }
 
-    /* ---- 网页自带贴画：以后再加新图，把 SEED_VERSION 加 1 即可 ---- */
-    const SEED_VERSION = 5;
+    /* ---- 网页自带贴画：以后再加新图，把 SEED_VERSION 加 1 即可；month 写死归属画板 ---- */
+    const SEED_VERSION = 6;
     const SEED_STICKERS = [
-      { src: 'stickers/Transform_this_couple_selfie_i_2026-08-31T07-22-22.png', label: 'Our first pixel selfie ♥' },
-      { src: 'stickers/Transform_this_photo_into_cute_2026-08-31T07-36-00.png', label: 'Carina & her yellow roses 🌼' },
-      { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-01-55.png', label: 'Us, pixelated 📸' },
-      { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-05-50.png', label: 'Another little moment ✨' },
-      { src: 'stickers/Transform_this_photo_into_a_cu_2026-09-05T02-49-47.png', label: 'Carina 骑白马 🌙' },
-      { src: 'stickers/Transform_this_vertical_mirror_2026-09-22T15-29-24.png', label: '镜子里的我们 🪞' },
-      { src: 'stickers/Transform_this_vertical_photo__2026-09-22T16-40-59.png', label: 'Carina 和花墙 🌸' },
-      { src: 'stickers/Transform_this_vertical_group__2026-09-22T16-41-01.png', label: '朋友聚餐 🍷' },
-      { src: 'stickers/Transform_this_wide_landscape__2026-09-22T16-40-59.png', label: '露台午后 🌿' }
+      { src: 'stickers/Transform_this_couple_selfie_i_2026-08-31T07-22-22.png', label: 'Our first pixel selfie ♥', month: '2026-08' },
+      { src: 'stickers/Transform_this_photo_into_cute_2026-08-31T07-36-00.png', label: 'Carina & her yellow roses 🌼', month: '2026-08' },
+      { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-01-55.png', label: 'Us, pixelated 📸', month: '2026-08' },
+      { src: 'stickers/Transform_this_photo_into_a_cu_2026-08-31T08-05-50.png', label: 'Another little moment ✨', month: '2026-08' },
+      { src: 'stickers/Transform_this_photo_into_a_cu_2026-09-05T02-49-47.png', label: 'Carina 骑白马 🌙', month: '2026-09' },
+      { src: 'stickers/Transform_this_vertical_mirror_2026-09-22T15-29-24.png', label: '镜子里的我们 🪞', month: '2026-09' },
+      { src: 'stickers/Transform_this_vertical_photo__2026-09-22T16-40-59.png', label: 'Carina 和花墙 🌸', month: '2026-09' },
+      { src: 'stickers/Transform_this_vertical_group__2026-09-22T16-41-01.png', label: '朋友聚餐 🍷', month: '2026-09' },
+      { src: 'stickers/Transform_this_wide_landscape__2026-09-22T16-40-59.png', label: '露台午后 🌿', month: '2026-09' },
+      { src: 'stickers/Transform_this_vertical_night__2026-10-13T09-10-56.png', label: '效率就是生命 🪧', month: '2026-10' },
+      { src: 'stickers/Transform_this_vertical_selfie_2026-10-13T09-11-31.png', label: '电梯自拍 🤳', month: '2026-10' },
+      { src: 'stickers/Transform_this_vertical_night__2026-10-13T09-19-23.png', label: '上海文艺医院 🏥', month: '2026-10' },
+      { src: 'stickers/Transform_this_vertical_night__2026-10-13T09-28-37.png', label: '武康大楼 🏛️', month: '2026-10' },
+      { src: 'stickers/Transform_this_vertical_dusk_s_2026-10-13T09-30-14.png', label: '上海中心 🌃', month: '2026-10' }
     ];
 
     function seedStickers() {
@@ -779,7 +784,7 @@
       let added = 0;
       SEED_STICKERS.forEach(s => {
         if (stickers.some(st => st.src === s.src)) return;
-        addSticker(s.src, s.label, currentMonthKey(), true);
+        addSticker(s.src, s.label, s.month || currentMonthKey(), true);
         added++;
       });
       localStorage.setItem(STICKER_KEY + '-seedv', String(SEED_VERSION));
