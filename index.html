@@ -166,72 +166,22 @@
     }
 
     .pixel-portrait {
-      width: 132px;
-      height: 112px;
+      width: 150px;
+      height: 130px;
       position: relative;
       flex: 0 0 auto;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
     }
-
-    .person {
-      position: absolute;
-      bottom: 0;
-      width: 56px;
-      height: 74px;
+    .pixel-portrait img {
+      max-width: 100%;
+      max-height: 100%;
+      image-rendering: pixelated;
+      animation: bob 2.4s steps(2, end) infinite;
+      filter: drop-shadow(2px 2px 0 var(--shadow));
     }
-    .person.one { left: 7px; }
-    .person.two { right: 7px; }
-    .person .head {
-      position: absolute;
-      top: 0;
-      left: 9px;
-      width: 38px;
-      height: 38px;
-      border: 4px solid var(--border);
-      background: #ffd9c5;
-      box-shadow: inset 0 8px 0 #4a3546;
-    }
-    .person.two .head { box-shadow: inset 0 11px 0 #754d43; }
-    .person .head::before,
-    .person .head::after {
-      content: "";
-      position: absolute;
-      top: 19px;
-      width: 4px;
-      height: 4px;
-      background: var(--border);
-    }
-    .person .head::before { left: 7px; }
-    .person .head::after { right: 7px; }
-    .person .body {
-      position: absolute;
-      bottom: 0;
-      width: 56px;
-      height: 39px;
-      border: 4px solid var(--border);
-      background: var(--blue);
-    }
-    .person.two .body { background: var(--pink); }
-    .big-heart {
-      position: absolute;
-      top: 3px;
-      left: 58px;
-      width: 16px;
-      height: 16px;
-      transform: rotate(45deg);
-      background: var(--pink-dark);
-      animation: bob 1.8s steps(2, end) infinite;
-    }
-    .big-heart::before, .big-heart::after {
-      content: "";
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: var(--pink-dark);
-    }
-    .big-heart::before { left: -8px; }
-    .big-heart::after { top: -8px; }
-    @keyframes bob { 50% { transform: translateY(-6px) rotate(45deg); } }
+    @keyframes bob { 50% { transform: translateY(-5px); } }
 
     .stats {
       display: grid;
@@ -741,9 +691,7 @@
           <p>哈咯，lovely Carina · hi pretty boy<br><span class="always">always in love</span></p>
         </div>
         <div class="pixel-portrait" aria-label="Winslow 和 Carina 的像素小人">
-          <div class="big-heart"></div>
-          <div class="person one"><div class="head"></div><div class="body"></div></div>
-          <div class="person two"><div class="head"></div><div class="body"></div></div>
+          <img src="stickers/pixel-couple-cutout.png" alt="Winslow 和 Carina 的像素合影" draggable="false">
         </div>
       </div>
     </header>
